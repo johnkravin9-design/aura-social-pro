@@ -2,24 +2,17 @@ from flask import Flask, render_template, request, jsonify, session, redirect, u
 import os
 import uuid
 from datetime import datetime
-import database
 
 app = Flask(__name__)
+app.secret_key = os.environ.get('SECRET_KEY', 'aura_social_pro_admin_2024_secure')
 
-# Production session configuration
-app.secret_key = os.environ.get('SECRET_KEY', 'aura_social_pro_render_deploy_2024_secure_key_12345')
-app.config.update(
-    SESSION_COOKIE_SECURE=True,
-    SESSION_COOKIE_HTTPONLY=True,
-    SESSION_COOKIE_SAMESITE='Lax',
-    PERMANENT_SESSION_LIFETIME=3600
-)
-
-# Initialize database
-database.init_db()
+# Enhanced user storage with admin support
+users_db = {}
+posts_db = []
+reports_db = []
 
 class User:
-    def __init__(self, username, email, password):
+    def __init__(self, username, email, password, is_admin=False):
         self.id = str(uuid.uuid4())
         self.username = username
         self.email = email
@@ -27,109 +20,82 @@ class User:
         self.display_name = username
         self.bio = "Welcome to my Aura! ✨"
         self.avatar = "👤"
+        self.is_admin = is_admin
+        self.is_active = True
         self.created_at = datetime.now().isoformat()
+        self.last_login = datetime.now().isoformat()
 
-def get_user_from_db(username):
-    """Get user from database"""
-    conn = database.get_db_connection()
-    user_row = conn.execute('SELECT * FROM users WHERE username = ?', (username,)).fetchone()
-    conn.close()
-    
-    if user_row:
-        user = User(user_row['username'], user_row['email'], user_row['password'])
-        user.id = user_row['id']
-        user.display_name = user_row['display_name'] or user.username
-        user.bio = user_row['bio'] or "Welcome to my Aura! ✨"
-        user.avatar = user_row['avatar'] or "👤"
-        user.created_at = user_row['created_at']
-        return user
-    return None
+class Post:
+    def __init__(self, user_id, content):
+        self.id = str(uuid.uuid4())
+        self.user_id = user_id
+        self.content = content
+        self.timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+        self.likes = 0
+        self.is_approved = True
+        self.reports = 0
+        self.username = ""
+        self.display_name = ""
+        self.avatar = "👤"
 
-def save_user_to_db(user):
-    """Save user to database"""
-    conn = database.get_db_connection()
-    conn.execute('''
-        INSERT OR REPLACE INTO users (id, username, email, password, display_name, bio, avatar, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    ''', (user.id, user.username, user.email, user.password, user.display_name, user.bio, user.avatar, user.created_at))
-    conn.commit()
-    conn.close()
-
-def get_posts_from_db():
-    """Get all posts from database"""
-    conn = database.get_db_connection()
-    posts = conn.execute('SELECT * FROM posts ORDER BY timestamp DESC').fetchall()
-    conn.close()
-    return posts
-
-def save_post_to_db(post):
-    """Save post to database"""
-    conn = database.get_db_connection()
-    conn.execute('''
-        INSERT INTO posts (id, user_id, content, timestamp, likes, loves, laughs, wows, username, display_name, avatar)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ''', (post.id, post.user_id, post.content, post.timestamp, post.likes, post.loves or 0, post.laughs or 0, post.wows or 0, post.username, post.display_name, post.avatar))
-    conn.commit()
-    conn.close()
-
-def update_post_reaction(post_id, reaction_type):
-    """Update post reaction counts"""
-    conn = database.get_db_connection()
-    
-    if reaction_type == 'like':
-        conn.execute('UPDATE posts SET likes = likes + 1 WHERE id = ?', (post_id,))
-    elif reaction_type == 'love':
-        conn.execute('UPDATE posts SET loves = loves + 1 WHERE id = ?', (post_id,))
-    elif reaction_type == 'laugh':
-        conn.execute('UPDATE posts SET laughs = laughs + 1 WHERE id = ?', (post_id,))
-    elif reaction_type == 'wow':
-        conn.execute('UPDATE posts SET wows = wows + 1 WHERE id = ?', (post_id,))
-    
-    conn.commit()
-    
-    # Get updated counts
-    post = conn.execute('SELECT likes, loves, laughs, wows FROM posts WHERE id = ?', (post_id,)).fetchone()
-    conn.close()
-    
-    if post:
-        return {
-            'likes': post['likes'],
-            'loves': post['loves'],
-            'laughs': post['laughs'],
-            'wows': post['wows']
-        }
-    return None
-
-# Initialize sample data if needed
+# Initialize with admin user - FIXED CREDENTIALS
 def init_sample_data():
-    demo_user = get_user_from_db('demo')
-    if not demo_user:
+    # Create admin user - SIMPLE PASSWORD
+    if 'admin' not in users_db:
+        admin_user = User('admin', 'admin@aura.social', 'admin', is_admin=True)  # Changed to simple 'admin'
+        users_db['admin'] = admin_user
+        print("👑 ADMIN USER CREATED: username 'admin', password 'admin'")
+    
+    # Create demo user
+    if 'demo' not in users_db:
         demo_user = User('demo', 'demo@aura.social', 'demo')
-        save_user_to_db(demo_user)
+        users_db['demo'] = demo_user
+        print("👤 DEMO USER: username 'demo', password 'demo'")
         
         # Create sample posts
         sample_posts = [
-            "Welcome to Aura Social! 🌟 This is a sample post to get things started. Share your aura with the world!",
-            "Just discovered this amazing platform! The design is incredible and the community seems so friendly. Can't wait to connect with everyone! ✨",
-            "Morning meditation complete! Starting the day with positive energy and good vibes. Remember to share your light with others today! 💫"
+            "Welcome to Aura Social! 🌟 Share your aura with the world!",
+            "Just discovered this amazing platform! The community seems so friendly. ✨",
+            "Morning meditation complete! Starting the day with positive energy! 💫"
         ]
         
         for content in sample_posts:
-            post = type('Post', (), {})()
-            post.id = str(uuid.uuid4())
-            post.user_id = demo_user.id
-            post.content = content
-            post.timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
-            post.likes = 0
-            post.loves = 0
-            post.laughs = 0
-            post.wows = 0
+            post = Post(demo_user.id, content)
             post.username = demo_user.username
             post.display_name = demo_user.display_name
             post.avatar = demo_user.avatar
-            save_post_to_db(post)
+            posts_db.append(post)
 
-# Routes
+    print(f"✅ Total users: {len(users_db)}")
+    print(f"✅ Total posts: {len(posts_db)}")
+
+# Admin authentication middleware
+def require_admin(f):
+    def decorated_function(*args, **kwargs):
+        print(f"🔐 Checking admin access for {session.get('username', 'No user')}")
+        
+        if 'username' not in session:
+            print("❌ No user in session - redirecting to login")
+            return redirect('/login')
+        
+        username = session['username']
+        user = users_db.get(username)
+        
+        if not user:
+            print(f"❌ User {username} not found in database")
+            return jsonify({'success': False, 'error': 'User not found'}), 403
+        
+        if not user.is_admin:
+            print(f"❌ User {username} is not admin")
+            return jsonify({'success': False, 'error': 'Admin access required'}), 403
+        
+        print(f"✅ Admin access granted for {username}")
+        return f(*args, **kwargs)
+    
+    decorated_function.__name__ = f.__name__
+    return decorated_function
+
+# ========== ROUTES ========== #
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -154,14 +120,35 @@ def profile():
         return redirect('/login')
     return render_template('profile.html')
 
-# MESSAGES ROUTE - THIS WAS MISSING!
 @app.route('/messages')
 def messages():
     if 'user_id' not in session:
         return redirect('/login')
     return render_template('messages.html')
 
-# API Routes
+# ADMIN PANEL ROUTES
+@app.route('/admin')
+@require_admin
+def admin_dashboard():
+    print("🎯 Rendering admin dashboard")
+    return render_template('admin_dashboard.html')
+
+@app.route('/admin/users')
+@require_admin
+def admin_users():
+    return render_template('admin_users.html')
+
+@app.route('/admin/posts')
+@require_admin
+def admin_posts():
+    return render_template('admin_posts.html')
+
+@app.route('/admin/reports')
+@require_admin
+def admin_reports():
+    return render_template('admin_reports.html')
+
+# ========== API ROUTES ========== #
 @app.route('/api/register', methods=['POST'])
 def api_register():
     try:
@@ -173,25 +160,21 @@ def api_register():
         if not username or not email or not password:
             return jsonify({'success': False, 'error': 'All fields are required'})
 
-        # Check if user exists in database
-        if get_user_from_db(username):
+        if username in users_db:
             return jsonify({'success': False, 'error': 'Username already exists'})
 
-        # Create new user
         user = User(username, email, password)
-        save_user_to_db(user)
+        users_db[username] = user
 
-        # Auto-login after registration
-        session.permanent = True
         session['user_id'] = user.id
         session['username'] = user.username
-        
-        print(f"DEBUG: User registered and logged in: {username}")
-        
+        session['is_admin'] = user.is_admin
+
+        print(f"✅ New user registered: {username}")
         return jsonify({'success': True, 'message': 'Registration successful'})
 
     except Exception as e:
-        print(f"DEBUG: Registration error: {e}")
+        print(f"❌ Registration error: {e}")
         return jsonify({'success': False, 'error': 'Registration failed'})
 
 @app.route('/api/login', methods=['POST'])
@@ -201,47 +184,61 @@ def api_login():
         username = data.get('username', '').strip()
         password = data.get('password', '')
 
+        print(f"🔐 Login attempt: {username}")
+
         if not username or not password:
             return jsonify({'success': False, 'error': 'Username and password are required'})
 
-        user = get_user_from_db(username)
-        if not user or user.password != password:
+        user = users_db.get(username)
+        
+        if not user:
+            print(f"❌ User {username} not found")
             return jsonify({'success': False, 'error': 'Invalid credentials'})
 
-        # Set up session properly
-        session.permanent = True
+        if user.password != password:
+            print(f"❌ Invalid password for {username}")
+            return jsonify({'success': False, 'error': 'Invalid credentials'})
+
+        if not user.is_active:
+            return jsonify({'success': False, 'error': 'Account suspended'})
+
+        # Set session data
         session['user_id'] = user.id
         session['username'] = user.username
-        
-        print(f"DEBUG: User logged in: {username}")
-        
-        return jsonify({'success': True, 'message': 'Login successful'})
+        session['is_admin'] = user.is_admin
+
+        user.last_login = datetime.now().isoformat()
+
+        print(f"✅ Login successful: {username} (Admin: {user.is_admin})")
+        return jsonify({
+            'success': True, 
+            'message': 'Login successful', 
+            'is_admin': user.is_admin,
+            'username': user.username
+        })
 
     except Exception as e:
-        print(f"DEBUG: Login error: {e}")
+        print(f"❌ Login error: {e}")
         return jsonify({'success': False, 'error': 'Login failed'})
 
 @app.route('/api/logout', methods=['POST'])
 def api_logout():
+    print(f"🚪 Logout: {session.get('username', 'Unknown')}")
     session.clear()
-    print("DEBUG: User logged out, session cleared")
     return jsonify({'success': True})
 
 @app.route('/api/current_user')
 def api_current_user():
-    if 'username' not in session:
+    username = session.get('username')
+    print(f"👤 Current user check: {username}")
+    
+    if not username:
         return jsonify({'error': 'Not logged in'})
 
-    username = session['username']
-    user = get_user_from_db(username)
+    user = users_db.get(username)
     
     if not user:
         return jsonify({'error': 'User not found'})
-
-    # Get post count for this user
-    conn = database.get_db_connection()
-    post_count = conn.execute('SELECT COUNT(*) as count FROM posts WHERE user_id = ?', (user.id,)).fetchone()['count']
-    conn.close()
 
     return jsonify({
         'username': user.username,
@@ -249,39 +246,104 @@ def api_current_user():
         'display_name': user.display_name,
         'bio': user.bio,
         'avatar': user.avatar,
-        'post_count': post_count,
-        'followers': 0,
-        'following': 0
+        'is_admin': user.is_admin,
+        'is_active': user.is_active
     })
 
-@app.route('/api/posts')
-def api_posts():
-    posts = get_posts_from_db()
-    posts_data = [dict(post) for post in posts]
-    print(f"DEBUG: Returning {len(posts_data)} posts from database")
+# ADMIN API ROUTES
+@app.route('/api/admin/stats')
+@require_admin
+def api_admin_stats():
+    stats = {
+        'total_users': len(users_db),
+        'total_posts': len(posts_db),
+        'pending_reports': len([r for r in reports_db if r.status == 'pending']),
+        'active_today': len([u for u in users_db.values() if u.last_login.split('T')[0] == datetime.now().date().isoformat()]),
+        'new_users_today': len([u for u in users_db.values() if u.created_at.split('T')[0] == datetime.now().date().isoformat()])
+    }
+    return jsonify(stats)
+
+@app.route('/api/admin/users')
+@require_admin
+def api_admin_users():
+    users_data = []
+    for user in users_db.values():
+        user_posts = len([p for p in posts_db if p.user_id == user.id])
+        users_data.append({
+            'id': user.id,
+            'username': user.username,
+            'email': user.email,
+            'is_admin': user.is_admin,
+            'is_active': user.is_active,
+            'post_count': user_posts,
+            'created_at': user.created_at,
+            'last_login': user.last_login
+        })
+    return jsonify(users_data)
+
+@app.route('/api/admin/posts')
+@require_admin
+def api_admin_posts():
+    posts_data = []
+    for post in posts_db:
+        user = next((u for u in users_db.values() if u.id == post.user_id), None)
+        posts_data.append({
+            'id': post.id,
+            'content': post.content,
+            'username': user.username if user else 'Unknown',
+            'timestamp': post.timestamp,
+            'likes': post.likes,
+            'reports': post.reports,
+            'is_approved': post.is_approved
+        })
     return jsonify(posts_data)
 
-@app.route('/api/user_posts')
-def api_user_posts():
-    if 'user_id' not in session:
-        return jsonify([])
+@app.route('/api/admin/toggle_user/<username>', methods=['POST'])
+@require_admin
+def api_admin_toggle_user(username):
+    user = users_db.get(username)
+    if user:
+        user.is_active = not user.is_active
+        return jsonify({'success': True, 'is_active': user.is_active})
+    return jsonify({'success': False, 'error': 'User not found'})
 
-    conn = database.get_db_connection()
-    user_posts = conn.execute(
-        'SELECT * FROM posts WHERE user_id = ? ORDER BY timestamp DESC', 
-        (session['user_id'],)
-    ).fetchall()
-    conn.close()
+@app.route('/api/admin/toggle_post/<post_id>', methods=['POST'])
+@require_admin
+def api_admin_toggle_post(post_id):
+    post = next((p for p in posts_db if p.id == post_id), None)
+    if post:
+        post.is_approved = not post.is_approved
+        return jsonify({'success': True, 'is_approved': post.is_approved})
+    return jsonify({'success': False, 'error': 'Post not found'})
+
+@app.route('/api/admin/delete_post/<post_id>', methods=['POST'])
+@require_admin
+def api_admin_delete_post(post_id):
+    global posts_db
+    posts_db = [p for p in posts_db if p.id != post_id]
+    return jsonify({'success': True})
+
+# User API routes
+@app.route('/api/posts')
+def api_posts():
+    approved_posts = [p for p in posts_db if p.is_approved]
     
+    for post in approved_posts:
+        user = next((u for u in users_db.values() if u.id == post.user_id), None)
+        if user:
+            post.username = user.username
+            post.display_name = user.display_name
+            post.avatar = user.avatar
+
     posts_data = [{
-        'id': post['id'],
-        'content': post['content'],
-        'timestamp': post['timestamp'],
-        'likes': post['likes'],
-        'loves': post['loves'],
-        'laughs': post['laughs'],
-        'wows': post['wows']
-    } for post in user_posts]
+        'id': post.id,
+        'content': post.content,
+        'timestamp': post.timestamp,
+        'likes': post.likes,
+        'username': post.username,
+        'display_name': post.display_name,
+        'avatar': post.avatar
+    } for post in approved_posts]
 
     return jsonify(posts_data)
 
@@ -297,52 +359,35 @@ def api_create_post():
         if not content:
             return jsonify({'success': False, 'error': 'Post content cannot be empty'})
 
-        user = get_user_from_db(session['username'])
+        user = users_db.get(session['username'])
         if not user:
             return jsonify({'success': False, 'error': 'User not found'})
 
-        # Create new post object
-        post = type('Post', (), {})()
-        post.id = str(uuid.uuid4())
-        post.user_id = user.id
-        post.content = content
-        post.timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
-        post.likes = 0
-        post.loves = 0
-        post.laughs = 0
-        post.wows = 0
+        post = Post(user.id, content)
         post.username = user.username
         post.display_name = user.display_name
         post.avatar = user.avatar
 
-        save_post_to_db(post)
-        print(f"DEBUG: Post created by {user.username}: {content}")
-
+        posts_db.append(post)
         return jsonify({'success': True, 'message': 'Post created successfully'})
 
     except Exception as e:
-        print(f"DEBUG: Create post error: {e}")
         return jsonify({'success': False, 'error': 'Failed to create post'})
 
-@app.route('/api/react_post/<post_id>/<reaction_type>', methods=['POST'])
-def api_react_post(post_id, reaction_type):
+@app.route('/api/like_post/<post_id>', methods=['POST'])
+def api_like_post(post_id):
     if 'user_id' not in session:
         return jsonify({'success': False, 'error': 'Not logged in'})
 
     try:
-        valid_reactions = ['like', 'love', 'laugh', 'wow']
-        if reaction_type not in valid_reactions:
-            return jsonify({'success': False, 'error': 'Invalid reaction type'})
-
-        updated_counts = update_post_reaction(post_id, reaction_type)
-        if updated_counts:
-            return jsonify({'success': True, 'reactions': updated_counts})
+        post = next((p for p in posts_db if p.id == post_id), None)
+        if post:
+            post.likes += 1
+            return jsonify({'success': True, 'likes': post.likes})
         else:
             return jsonify({'success': False, 'error': 'Post not found'})
-
     except Exception as e:
-        print(f"DEBUG: React post error: {e}")
-        return jsonify({'success': False, 'error': 'Failed to react to post'})
+        return jsonify({'success': False, 'error': 'Failed to like post'})
 
 @app.route('/api/update_avatar', methods=['POST'])
 def api_update_avatar():
@@ -354,44 +399,46 @@ def api_update_avatar():
         avatar = data.get('avatar', '👤')
         
         username = session['username']
-        user = get_user_from_db(username)
+        user = users_db.get(username)
         
         if user:
             user.avatar = avatar
-            save_user_to_db(user)
-            print(f"DEBUG: Updated avatar for {username} to {avatar}")
             return jsonify({'success': True, 'message': 'Avatar updated successfully'})
         else:
             return jsonify({'success': False, 'error': 'User not found'})
             
     except Exception as e:
-        print(f"DEBUG: Update avatar error: {e}")
         return jsonify({'success': False, 'error': 'Failed to update avatar'})
-
-@app.route('/api/debug_posts')
-def debug_posts():
-    posts = get_posts_from_db()
-    return jsonify([dict(post) for post in posts])
-
-@app.route('/api/debug_session')
-def debug_session():
-    return jsonify(dict(session))
 
 @app.route('/favicon.ico')
 def favicon():
     return '', 204
 
 if __name__ == '__main__':
-    # Initialize sample data
     init_sample_data()
     
-    # Production settings
     debug_mode = os.environ.get('DEBUG', 'False').lower() == 'true'
-    port = int(os.environ.get('PORT', 10000))
+    port = int(os.environ.get('PORT', 8000))
     
-    print(f"🚀 Aura Social Pro with MESSAGES starting on port {port}")
-    print("💬 Features: Live Messaging, SQLite Database, Avatar System")
-    print("🔑 Demo account: username 'demo', password 'demo'")
-    print("🌐 Production Ready!")
+    print("\n" + "="*50)
+    print("🚀 AURA SOCIAL PRO - ADMIN PANEL READY")
+    print("="*50)
+    print("👑 ADMIN LOGIN:")
+    print("   Username: admin")
+    print("   Password: admin")
+    print("   URL: /admin")
+    print("")
+    print("👤 DEMO LOGIN:")
+    print("   Username: demo") 
+    print("   Password: demo")
+    print("")
+    print("💬 Messages: /messages")
+    print("👑 Admin Panel: /admin")
+    print(f"🌐 Running on http://0.0.0.0:{port}")
+    print("="*50 + "\n")
     
     app.run(debug=debug_mode, host='0.0.0.0', port=port)
+
+@app.route('/admin_test')
+def admin_test():
+    return render_template('admin_test.html')

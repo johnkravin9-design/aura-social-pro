@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard - Aura Social{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 pt-20">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <!-- Admin Header -->
+        <div class="glass rounded-2xl p-6 mb-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-3xl font-bold text-white">👑 Admin Dashboard</h1>
+                    <p class="text-purple-300 mt-2">Manage your Aura Social platform</p>
+                </div>
+                <div class="flex space-x-4">
+                    <a href="/feed" class="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-3 rounded-full hover:from-purple-600 hover:to-pink-600 transition-all">
+                        ← User View
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats Overview -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div class="glass rounded-2xl p-6 text-center">
+                <div class="text-3xl text-white font-bold" id="totalUsers">0</div>
+                <div class="text-purple-300 mt-2">Total Users</div>
+            </div>
+            <div class="glass rounded-2xl p-6 text-center">
+                <div class="text-3xl text-white font-bold" id="totalPosts">0</div>
+                <div class="text-purple-300 mt-2">Total Posts</div>
+            </div>
+            <div class="glass rounded-2xl p-6 text-center">
+                <div class="text-3xl text-white font-bold" id="pendingReports">0</div>
+                <div class="text-purple-300 mt-2">Pending Reports</div>
+            </div>
+            <div class="glass rounded-2xl p-6 text-center">
+                <div class="text-3xl text-white font-bold" id="activeToday">0</div>
+                <div class="text-purple-300 mt-2">Active Today</div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="glass rounded-2xl p-6 mb-8">
+            <h2 class="text-2xl font-bold text-white mb-6">Quick Actions</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <a href="/admin/users" class="bg-gradient-to-r from-blue-500 to-cyan-500 text-white p-6 rounded-2xl text-center hover:from-blue-600 hover:to-cyan-600 transition-all">
+                    <div class="text-3xl mb-2">👥</div>
+                    <div class="font-semibold">User Management</div>
+                </a>
+                <a href="/admin/posts" class="bg-gradient-to-r from-green-500 to-teal-500 text-white p-6 rounded-2xl text-center hover:from-green-600 hover:to-teal-600 transition-all">
+                    <div class="text-3xl mb-2">📝</div>
+                    <div class="font-semibold">Post Moderation</div>
+                </a>
+                <a href="/admin/reports" class="bg-gradient-to-r from-orange-500 to-red-500 text-white p-6 rounded-2xl text-center hover:from-orange-600 hover:to-red-600 transition-all">
+                    <div class="text-3xl mb-2">🚨</div>
+                    <div class="font-semibold">Reports</div>
+                </a>
+                <a href="/admin/analytics" class="bg-gradient-to-r from-purple-500 to-pink-500 text-white p-6 rounded-2xl text-center hover:from-purple-600 hover:to-pink-600 transition-all">
+                    <div class="text-3xl mb-2">📊</div>
+                    <div class="font-semibold">Analytics</div>
+                </a>
+            </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Recent Users -->
+            <div class="glass rounded-2xl p-6">
+                <h3 class="text-xl font-bold text-white mb-4">Recent Users</h3>
+                <div id="recentUsers" class="space-y-3">
+                    <!-- Users will be loaded here -->
+                </div>
+            </div>
+
+            <!-- Recent Reports -->
+            <div class="glass rounded-2xl p-6">
+                <h3 class="text-xl font-bold text-white mb-4">Recent Reports</h3>
+                <div id="recentReports" class="space-y-3">
+                    <!-- Reports will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+async function loadAdminData() {
+    try {
+        // Load stats
+        const statsResponse = await fetch('/api/admin/stats');
+        const stats = await statsResponse.json();
+        
+        document.getElementById('totalUsers').textContent = stats.total_users;
+        document.getElementById('totalPosts').textContent = stats.total_posts;
+        document.getElementById('pendingReports').textContent = stats.pending_reports;
+        document.getElementById('activeToday').textContent = stats.active_today;
+
+        // Load recent users
+        const usersResponse = await fetch('/api/admin/users');
+        const users = await usersResponse.json();
+        
+        const recentUsers = users.slice(-5).reverse();
+        const usersContainer = document.getElementById('recentUsers');
+        usersContainer.innerHTML = recentUsers.map(user => `
+            <div class="flex items-center justify-between p-3 bg-white/10 rounded-xl">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold">
+                        ${user.username.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                        <div class="text-white font-semibold">${user.username}</div>
+                        <div class="text-purple-300 text-sm">${new Date(user.created_at).toLocaleDateString()}</div>
+                    </div>
+                </div>
+                ${user.is_admin ? '<span class="px-2 py-1 bg-yellow-500 text-white text-xs rounded-full">Admin</span>' : ''}
+            </div>
+        `).join('');
+
+        // Load recent reports
+        const reportsResponse = await fetch('/api/admin/reports');
+        const reports = await reportsResponse.json();
+        
+        const recentReports = reports.slice(-5).reverse();
+        const reportsContainer = document.getElementById('recentReports');
+        reportsContainer.innerHTML = recentReports.map(report => `
+            <div class="p-3 bg-white/10 rounded-xl">
+                <div class="flex justify-between items-start mb-2">
+                    <div class="text-white font-semibold">Report #${report.id.slice(-6)}</div>
+                    <span class="px-2 py-1 ${getReportStatusColor(report.status)} text-white text-xs rounded-full">
+                        ${report.status}
+                    </span>
+                </div>
+                <div class="text-purple-300 text-sm truncate">${report.reason}</div>
+            </div>
+        `).join('');
+
+    } catch (error) {
+        console.error('Error loading admin data:', error);
+        showNotification('Failed to load admin data', 'error');
+    }
+}
+
+function getReportStatusColor(status) {
+    switch(status) {
+        case 'pending': return 'bg-orange-500';
+        case 'reviewed': return 'bg-blue-500';
+        case 'resolved': return 'bg-green-500';
+        default: return 'bg-gray-500';
+    }
+}
+
+// Check if user is admin
+async function checkAdminAccess() {
+    try {
+        const response = await fetch('/api/current_user');
+        const user = await response.json();
+        
+        if (user.error || !user.is_admin) {
+            showNotification('Admin access required', 'error');
+            setTimeout(() => {
+                window.location.href = '/feed';
+            }, 2000);
+            return false;
+        }
+        return true;
+    } catch (error) {
+        showNotification('Error verifying admin access', 'error');
+        return false;
+    }
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', async function() {
+    const isAdmin = await checkAdminAccess();
+    if (isAdmin) {
+        loadAdminData();
+        
+        // Refresh data every 30 seconds
+        setInterval(loadAdminData, 30000);
+    }
+});
+</script>
+{% endblock %}

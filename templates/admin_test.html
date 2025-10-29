@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Test - Aura Social</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+    <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full">
+        <h1 class="text-3xl font-bold text-gray-800 mb-6 text-center">🔧 Admin Test</h1>
+        
+        <div class="space-y-4 mb-6">
+            <button onclick="checkCurrentUser()" class="w-full bg-blue-500 text-white py-3 rounded-lg hover:bg-blue-600 transition-colors">
+                Check Current User
+            </button>
+            
+            <button onclick="testAdminLogin()" class="w-full bg-green-500 text-white py-3 rounded-lg hover:bg-green-600 transition-colors">
+                Test Admin Login
+            </button>
+            
+            <button onclick="accessAdminPanel()" class="w-full bg-purple-500 text-white py-3 rounded-lg hover:bg-purple-600 transition-colors">
+                Access Admin Panel
+            </button>
+        </div>
+        
+        <div id="result" class="bg-gray-50 rounded-lg p-4 min-h-[100px]">
+            <p class="text-gray-600 text-center">Results will appear here...</p>
+        </div>
+        
+        <div class="mt-6 text-center">
+            <a href="/login" class="text-purple-600 hover:text-purple-700">Go to Login</a>
+        </div>
+    </div>
+
+    <script>
+        async function checkCurrentUser() {
+            try {
+                const response = await fetch('/api/current_user');
+                const user = await response.json();
+                
+                document.getElementById('result').innerHTML = `
+                    <h3 class="font-bold text-lg mb-2">Current User:</h3>
+                    <pre class="bg-white p-3 rounded border">${JSON.stringify(user, null, 2)}</pre>
+                `;
+            } catch (error) {
+                document.getElementById('result').innerHTML = `
+                    <div class="text-red-500">Error: ${error.message}</div>
+                `;
+            }
+        }
+
+        async function testAdminLogin() {
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        username: 'admin',
+                        password: 'admin'
+                    })
+                });
+                
+                const result = await response.json();
+                
+                document.getElementById('result').innerHTML = `
+                    <h3 class="font-bold text-lg mb-2">Login Result:</h3>
+                    <pre class="bg-white p-3 rounded border">${JSON.stringify(result, null, 2)}</pre>
+                `;
+                
+                if (result.success) {
+                    setTimeout(checkCurrentUser, 1000);
+                }
+            } catch (error) {
+                document.getElementById('result').innerHTML = `
+                    <div class="text-red-500">Error: ${error.message}</div>
+                `;
+            }
+        }
+
+        async function accessAdminPanel() {
+            try {
+                const response = await fetch('/admin');
+                if (response.redirected) {
+                    document.getElementById('result').innerHTML = `
+                        <div class="text-orange-500">
+                            <p>Redirected to: ${response.url}</p>
+                            <p>This means you need to login as admin first.</p>
+                        </div>
+                    `;
+                } else {
+                    document.getElementById('result').innerHTML = `
+                        <div class="text-green-500">
+                            <p>✅ Successfully accessed admin panel!</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                document.getElementById('result').innerHTML = `
+                    <div class="text-red-500">Error: ${error.message}</div>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

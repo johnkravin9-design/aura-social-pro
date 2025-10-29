@@ -3,117 +3,117 @@
 {% block title %}Messages - Aura Social{% endblock %}
 
 {% block content %}
-<div class="max-w-6xl mx-auto py-8">
-    <!-- Messages Header -->
-    <div class="glass rounded-2xl p-6 mb-6">
-        <div class="flex items-center justify-between">
-            <div>
-                <h1 class="text-3xl font-bold text-white">💬 Messages</h1>
-                <p class="text-purple-300 mt-2">Chat with your Aura friends</p>
-            </div>
-            <div class="flex space-x-4">
-                <button class="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-3 rounded-full hover:from-purple-600 hover:to-pink-600 transition-all">
-                    New Message
-                </button>
-            </div>
+<div class="max-w-4xl mx-auto py-8">
+    <div class="glass rounded-2xl p-8">
+        <div class="text-center mb-8">
+            <div class="text-6xl mb-6">💬</div>
+            <h1 class="text-3xl font-bold text-white mb-4">Aura Messages</h1>
+            <p class="text-purple-300 text-lg">Chat with your friends in real-time</p>
         </div>
-    </div>
 
-    <!-- Messages Grid -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <!-- Conversation Card 1 -->
-        <div class="glass rounded-2xl p-6 hover:bg-white/10 transition-all cursor-pointer post-card">
-            <div class="flex items-center space-x-4 mb-4">
-                <div class="relative">
-                    <div class="w-14 h-14 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-bold text-xl">
+        <!-- Simple Messages Interface -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Conversations List -->
+            <div class="lg:col-span-1 glass rounded-2xl p-6">
+                <h2 class="text-xl font-bold text-white mb-4">Conversations</h2>
+                <div class="space-y-3">
+                    <div class="p-4 rounded-xl bg-white/10 cursor-pointer hover:bg-white/20 transition-colors">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-12 h-12 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold">
+                                S
+                            </div>
+                            <div>
+                                <h3 class="font-semibold text-white">Sarah Johnson</h3>
+                                <p class="text-purple-300 text-sm">See you tomorrow! 🎉</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="p-4 rounded-xl bg-white/10 cursor-pointer hover:bg-white/20 transition-colors">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-12 h-12 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 flex items-center justify-center text-white font-bold">
+                                M
+                            </div>
+                            <div>
+                                <h3 class="font-semibold text-white">Mike Chen</h3>
+                                <p class="text-purple-300 text-sm">Thanks for the help!</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chat Area -->
+            <div class="lg:col-span-2 glass rounded-2xl p-6">
+                <div class="flex items-center space-x-3 mb-6 pb-4 border-b border-white/20">
+                    <div class="w-12 h-12 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold">
                         S
                     </div>
-                    <div class="absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
-                </div>
-                <div class="flex-1">
-                    <h3 class="text-white font-bold">Sarah Johnson</h3>
-                    <p class="text-purple-300 text-sm">Online</p>
-                </div>
-            </div>
-            <p class="text-purple-300 text-sm mb-4">Hey! How's the project going? 🚀</p>
-            <div class="flex justify-between items-center text-xs text-purple-400">
-                <span>2 min ago</span>
-                <span class="bg-purple-500 text-white px-2 py-1 rounded-full">2</span>
-            </div>
-        </div>
-
-        <!-- Conversation Card 2 -->
-        <div class="glass rounded-2xl p-6 hover:bg-white/10 transition-all cursor-pointer post-card">
-            <div class="flex items-center space-x-4 mb-4">
-                <div class="relative">
-                    <div class="w-14 h-14 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full flex items-center justify-center text-white font-bold text-xl">
-                        M
+                    <div>
+                        <h2 class="font-bold text-white">Sarah Johnson</h2>
+                        <p class="text-green-400 text-sm">Online</p>
                     </div>
-                    <div class="absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
                 </div>
-                <div class="flex-1">
-                    <h3 class="text-white font-bold">Mike Chen</h3>
-                    <p class="text-purple-300 text-sm">Online</p>
-                </div>
-            </div>
-            <p class="text-purple-300 text-sm mb-4">Thanks for your help yesterday! 🙏</p>
-            <div class="flex justify-between items-center text-xs text-purple-400">
-                <span>15 min ago</span>
-                <span class="bg-gray-500 text-white px-2 py-1 rounded-full">0</span>
-            </div>
-        </div>
 
-        <!-- Conversation Card 3 -->
-        <div class="glass rounded-2xl p-6 hover:bg-white/10 transition-all cursor-pointer post-card">
-            <div class="flex items-center space-x-4 mb-4">
-                <div class="relative">
-                    <div class="w-14 h-14 bg-gradient-to-r from-green-500 to-teal-500 rounded-full flex items-center justify-center text-white font-bold text-xl">
-                        E
+                <!-- Messages -->
+                <div class="space-y-4 mb-6 max-h-96 overflow-y-auto">
+                    <div class="flex justify-start">
+                        <div class="bg-white/10 rounded-2xl px-4 py-3 max-w-[80%]">
+                            <p class="text-white">Hey! How are you doing? 😊</p>
+                            <p class="text-purple-300 text-xs mt-1">10:30 AM</p>
+                        </div>
                     </div>
-                    <div class="absolute bottom-0 right-0 w-4 h-4 bg-gray-400 rounded-full border-2 border-white"></div>
+                    
+                    <div class="flex justify-end">
+                        <div class="bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl px-4 py-3 max-w-[80%]">
+                            <p class="text-white">I'm doing great! Just finished that project 🎉</p>
+                            <p class="text-purple-100 text-xs mt-1">10:32 AM</p>
+                        </div>
+                    </div>
                 </div>
-                <div class="flex-1">
-                    <h3 class="text-white font-bold">Emma Wilson</h3>
-                    <p class="text-purple-300 text-sm">Offline</p>
+
+                <!-- Message Input -->
+                <div class="flex space-x-3">
+                    <input type="text" placeholder="Type your message..." 
+                           class="flex-1 bg-white/10 text-white placeholder-purple-300 rounded-xl px-4 py-3 border border-white/20 focus:outline-none focus:border-purple-400">
+                    <button class="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-3 rounded-xl font-semibold hover:from-purple-600 hover:to-pink-600 transition-all">
+                        Send
+                    </button>
                 </div>
             </div>
-            <p class="text-purple-300 text-sm mb-4">Let's catch up this weekend! ☕</p>
-            <div class="flex justify-between items-center text-xs text-purple-400">
-                <span>1 hour ago</span>
-                <span class="bg-gray-500 text-white px-2 py-1 rounded-full">0</span>
-            </div>
         </div>
 
-        <!-- Coming Soon Cards -->
-        <div class="glass rounded-2xl p-6 text-center">
-            <div class="text-4xl mb-4">🎨</div>
-            <h3 class="text-white font-bold mb-2">Live Chat</h3>
-            <p class="text-purple-300 text-sm mb-4">Real-time messaging coming soon!</p>
-        </div>
-
-        <div class="glass rounded-2xl p-6 text-center">
-            <div class="text-4xl mb-4">📱</div>
-            <h3 class="text-white font-bold mb-2">Group Chats</h3>
-            <p class="text-purple-300 text-sm mb-4">Create groups with friends!</p>
-        </div>
-
-        <div class="glass rounded-2xl p-6 text-center">
-            <div class="text-4xl mb-4">🔔</div>
-            <h3 class="text-white font-bold mb-2">Notifications</h3>
-            <p class="text-purple-300 text-sm mb-4">Get notified of new messages!</p>
+        <div class="text-center mt-8">
+            <a href="/feed" class="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-3 rounded-full hover:from-purple-600 hover:to-pink-600 transition-all">
+                ← Back to Feed
+            </a>
         </div>
     </div>
 </div>
 
 <script>
-// Simple message functionality for demo
+// Simple messaging functionality
 document.addEventListener('DOMContentLoaded', function() {
-    const conversationCards = document.querySelectorAll('.glass.cursor-pointer');
+    const sendButton = document.querySelector('button');
+    const messageInput = document.querySelector('input');
     
-    conversationCards.forEach(card => {
-        card.addEventListener('click', function() {
-            showNotification('Full chat interface coming in the next update! 🚀', 'info');
-        });
+    sendButton.addEventListener('click', function() {
+        const message = messageInput.value.trim();
+        if (message) {
+            alert('Message sent: ' + message);
+            messageInput.value = '';
+            
+            // In a real app, you would send this to your backend
+            if (typeof showNotification === 'function') {
+                showNotification('Message sent successfully!', 'success');
+            }
+        }
+    });
+    
+    messageInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            sendButton.click();
+        }
     });
 });
 </script>
