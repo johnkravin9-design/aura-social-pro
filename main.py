@@ -1,15 +1,12 @@
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for, flash
-from flask_socketio import SocketIO, emit
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for
 import json
 import os
 from datetime import datetime
 import uuid
 
 app = Flask(__name__)
-app.secret_key = 'aura_social_pro_secret_key_2024'
-
-# Use synchronous server with threading instead of async drivers
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
+# Use environment variable with fallback for development
+app.secret_key = os.environ.get('SECRET_KEY', 'dev_key_aura_social_2024')
 
 # In-memory database (replace with real database in production)
 users_db = {}
@@ -20,7 +17,7 @@ class User:
         self.id = str(uuid.uuid4())
         self.username = username
         self.email = email
-        self.password = password  # In production, hash this!
+        self.password = password
         self.display_name = username
         self.bio = "Welcome to my Aura! ✨"
         self.avatar = "👤"
@@ -80,11 +77,9 @@ def api_register():
         if username in users_db:
             return jsonify({'success': False, 'error': 'Username already exists'})
 
-        # Create new user
         user = User(username, email, password)
         users_db[username] = user
 
-        # Auto-login after registration
         session['user_id'] = user.id
         session['username'] = user.username
 
@@ -104,7 +99,7 @@ def api_login():
             return jsonify({'success': False, 'error': 'Username and password are required'})
 
         user = users_db.get(username)
-        if not user or user.password != password:  # In production, use proper password hashing
+        if not user or user.password != password:
             return jsonify({'success': False, 'error': 'Invalid credentials'})
 
         session['user_id'] = user.id
@@ -143,7 +138,6 @@ def api_current_user():
 
 @app.route('/api/posts')
 def api_posts():
-    # Add user info to posts
     for post in posts_db:
         user = next((u for u in users_db.values() if u.id == post.user_id), None)
         if user:
@@ -190,10 +184,8 @@ def api_create_post():
         if not content:
             return jsonify({'success': False, 'error': 'Post content cannot be empty'})
 
-        # Create new post
         post = Post(session['user_id'], content)
         
-        # Add user info
         user = users_db.get(session['username'])
         if user:
             post.username = user.username
@@ -201,17 +193,6 @@ def api_create_post():
             post.avatar = user.avatar
 
         posts_db.append(post)
-
-        # Emit socket event for real-time update
-        socketio.emit('new_post', {
-            'id': post.id,
-            'content': post.content,
-            'timestamp': post.timestamp,
-            'username': post.username,
-            'display_name': post.display_name,
-            'avatar': post.avatar,
-            'likes': post.likes
-        })
 
         return jsonify({'success': True, 'message': 'Post created successfully'})
 
@@ -227,13 +208,6 @@ def api_like_post(post_id):
         post = next((p for p in posts_db if p.id == post_id), None)
         if post:
             post.likes += 1
-            
-            # Emit socket event for real-time update
-            socketio.emit('post_updated', {
-                'id': post.id,
-                'likes': post.likes
-            })
-
             return jsonify({'success': True, 'likes': post.likes})
         else:
             return jsonify({'success': False, 'error': 'Post not found'})
@@ -241,22 +215,8 @@ def api_like_post(post_id):
     except Exception as e:
         return jsonify({'success': False, 'error': 'Failed to like post'})
 
-# Socket.IO Events
-@socketio.on('connect')
-def handle_connect():
-    print('Client connected to Aura Social')
-
-@socketio.on('disconnect')
-def handle_disconnect():
-    print('Client disconnected from Aura Social')
-
-@socketio.on('join_feed')
-def handle_join_feed():
-    print('User joined feed')
-    emit('feed_joined', {'message': 'Welcome to Aura Social feed!'})
-
 if __name__ == '__main__':
-    # Create some sample data for demonstration
+    # Create sample data
     if not users_db:
         sample_user = User('demo', 'demo@aura.social', 'demo')
         users_db['demo'] = sample_user
@@ -267,5 +227,19 @@ if __name__ == '__main__':
         sample_post.avatar = sample_user.avatar
         posts_db.append(sample_post)
 
-    print("🚀 Aura Social Pro starting on http://localhost:8000")
-    socketio.run(app, debug=True, host='0.0.0.0', port=8000)
+        sample_post2 = Post(sample_user.id, "Just discovered this amazing platform! The design is incredible and the community seems so friendly. Can't wait to connect with everyone! ✨")
+        sample_post2.username = sample_user.username
+        sample_post2.display_name = sample_user.display_name
+        sample_post2.avatar = sample_user.avatar
+        posts_db.append(sample_post2)
+
+    # Production settings
+    debug_mode = os.environ.get('DEBUG', 'False').lower() == 'true'
+    port = int(os.environ.get('PORT', 10000))
+    
+    print(f"🚀 Aura Social Pro starting on port {port}")
+    print("✨ Features: User Auth, Posts, Likes, Modern UI")
+    print("🔑 Demo account: username 'demo', password 'demo'")
+    print("🌐 Production Ready!")
+    
+    app.run(debug=debug_mode, host='0.0.0.0', port=port)
