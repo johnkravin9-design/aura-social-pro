@@ -1,0 +1,19 @@
+<!-- Replace the post actions section in feed.html with this: -->
+<div class="flex items-center justify-between text-purple-300">
+    <button onclick="reactToPost('${post.id}', 'like')" class="flex items-center space-x-2 hover:text-pink-400 transition-colors reaction-btn" data-post="${post.id}" data-reaction="like">
+        <span class="reaction-emoji">❤️</span>
+        <span class="reaction-count">${post.likes || 0}</span>
+    </button>
+    <button onclick="reactToPost('${post.id}', 'love')" class="flex items-center space-x-2 hover:text-red-400 transition-colors reaction-btn" data-post="${post.id}" data-reaction="love">
+        <span class="reaction-emoji">🥰</span>
+        <span class="reaction-count">${post.loves || 0}</span>
+    </button>
+    <button onclick="reactToPost('${post.id}', 'laugh')" class="flex items-center space-x-2 hover:text-yellow-400 transition-colors reaction-btn" data-post="${post.id}" data-reaction="laugh">
+        <span class="reaction-emoji">😂</span>
+        <span class="reaction-count">${post.laughs || 0}</span>
+    </button>
+    <button onclick="reactToPost('${post.id}', 'wow')" class="flex items-center space-x-2 hover:text-blue-400 transition-colors reaction-btn" data-post="${post.id}" data-reaction="wow">
+        <span class="reaction-emoji">😮</span>
+        <span class="reaction-count">${post.wows || 0}</span>
+    </button>
+</div>

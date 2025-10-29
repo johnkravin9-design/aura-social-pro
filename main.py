@@ -297,3 +297,26 @@ if __name__ == '__main__':
     print("🌐 Production Ready!")
     
     app.run(debug=debug_mode, host='0.0.0.0', port=port)
+
+@app.route('/api/update_avatar', methods=['POST'])
+def api_update_avatar():
+    if 'username' not in session:
+        return jsonify({'success': False, 'error': 'Not logged in'})
+
+    try:
+        data = request.get_json()
+        avatar = data.get('avatar', '👤')
+        
+        username = session['username']
+        user = users_db.get(username)
+        
+        if user:
+            user.avatar = avatar
+            print(f"DEBUG: Updated avatar for {username} to {avatar}")
+            return jsonify({'success': True, 'message': 'Avatar updated successfully'})
+        else:
+            return jsonify({'success': False, 'error': 'User not found'})
+            
+    except Exception as e:
+        print(f"DEBUG: Update avatar error: {e}")
+        return jsonify({'success': False, 'error': 'Failed to update avatar'})

@@ -7,8 +7,13 @@
     <!-- Profile Header -->
     <div class="glass rounded-2xl p-8 mb-6">
         <div class="flex items-center space-x-6">
-            <div class="w-24 h-24 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-4xl aura-glow">
-                👤
+            <div class="relative">
+                <div id="userAvatar" class="w-24 h-24 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-4xl aura-glow cursor-pointer" onclick="openAvatarPicker()">
+                    👤
+                </div>
+                <button onclick="openAvatarPicker()" class="absolute -bottom-2 -right-2 bg-purple-500 text-white w-8 h-8 rounded-full flex items-center justify-center text-sm hover:bg-purple-600 transition-colors">
+                    ✏️
+                </button>
             </div>
             <div class="flex-1">
                 <h1 class="text-3xl font-bold text-white" id="profileName">Loading...</h1>
@@ -46,7 +51,6 @@
     <div>
         <h2 class="text-2xl font-bold text-white mb-6">Recent Auras</h2>
         <div id="userPostsContainer" class="space-y-4">
-            <!-- User posts will be loaded here -->
             <div class="glass rounded-2xl p-8 text-center">
                 <div class="text-4xl mb-4">🌟</div>
                 <h3 class="text-white font-bold text-xl mb-2">No Auras Yet</h3>
@@ -56,7 +60,35 @@
     </div>
 </div>
 
+<!-- Avatar Picker Modal -->
+<div id="avatarModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="glass rounded-2xl p-6 max-w-md w-full mx-4">
+        <h3 class="text-white font-bold text-xl mb-4">Choose Your Avatar</h3>
+        <div class="grid grid-cols-4 gap-4 mb-6">
+            <div class="avatar-option w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-2xl cursor-pointer hover:scale-110 transition-transform" data-avatar="👤">👤</div>
+            <div class="avatar-option w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-2xl cursor-pointer hover:scale-110 transition-transform" data-avatar="😊">😊</div>
+            <div class="avatar-option w-16 h-16 bg-gradient-to-r from-green-500 to-teal-500 rounded-full flex items-center justify-center text-2xl cursor-pointer hover:scale-110 transition-transform" data-avatar="🎨">🎨</div>
+            <div class="avatar-option w-16 h-16 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-full flex items-center justify-center text-2xl cursor-pointer hover:scale-110 transition-transform" data-avatar="🚀">🚀</div>
+            <div class="avatar-option w-16 h-16 bg-gradient-to-r from-pink-500 to-red-500 rounded-full flex items-center justify-center text-2xl cursor-pointer hover:scale-110 transition-transform" data-avatar="🌟">🌟</div>
+            <div class="avatar-option w-16 h-16 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full flex items-center justify-center text-2xl cursor-pointer hover:scale-110 transition-transform" data-avatar="💫">💫</div>
+            <div class="avatar-option w-16 h-16 bg-gradient-to-r from-teal-500 to-blue-500 rounded-full flex items-center justify-center text-2xl cursor-pointer hover:scale-110 transition-transform" data-avatar="🎭">🎭</div>
+            <div class="avatar-option w-16 h-16 bg-gradient-to-r from-orange-500 to-red-500 rounded-full flex items-center justify-center text-2xl cursor-pointer hover:scale-110 transition-transform" data-avatar="🔥">🔥</div>
+        </div>
+        <div class="flex space-x-4">
+            <button onclick="closeAvatarPicker()" class="flex-1 glass text-white px-4 py-2 rounded-xl hover:bg-white/20 transition-colors">
+                Cancel
+            </button>
+            <button onclick="saveAvatar()" class="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-2 rounded-xl hover:from-purple-600 hover:to-pink-600 transition-all">
+                Save Avatar
+            </button>
+        </div>
+    </div>
+</div>
+
 <script>
+let currentUser = null;
+let selectedAvatar = '👤';
+
 async function loadProfile() {
     try {
         const response = await fetch('/api/current_user');
@@ -67,6 +99,7 @@ async function loadProfile() {
             return;
         }
         
+        currentUser = user;
         updateProfile(user);
         loadUserPosts();
     } catch (error) {
@@ -78,7 +111,64 @@ function updateProfile(user) {
     document.getElementById('profileName').textContent = user.display_name || user.username;
     document.getElementById('profileUsername').textContent = `@${user.username}`;
     document.getElementById('profileBio').textContent = user.bio || 'This is where your bio will appear. Share your aura with the world!';
-    document.getElementById('profileEmail').textContent = user.email || '';
+    document.getElementById('userAvatar').textContent = user.avatar || '👤';
+    
+    // Update stats
+    document.getElementById('profilePosts').textContent = user.post_count || '0';
+    document.getElementById('profileFollowing').textContent = user.following || '0';
+    document.getElementById('profileFollowers').textContent = user.followers || '0';
+}
+
+function openAvatarPicker() {
+    document.getElementById('avatarModal').classList.remove('hidden');
+}
+
+function closeAvatarPicker() {
+    document.getElementById('avatarModal').classList.add('hidden');
+}
+
+function saveAvatar() {
+    // Update the avatar display
+    document.getElementById('userAvatar').textContent = selectedAvatar;
+    
+    // Save to backend (we'll implement this in main.py)
+    updateUserAvatar(selectedAvatar);
+    
+    closeAvatarPicker();
+    showNotification('Avatar updated successfully! ✨', 'success');
+}
+
+// Avatar selection
+document.querySelectorAll('.avatar-option').forEach(option => {
+    option.addEventListener('click', function() {
+        // Remove previous selection
+        document.querySelectorAll('.avatar-option').forEach(opt => {
+            opt.classList.remove('ring-2', 'ring-white', 'ring-offset-2', 'ring-offset-purple-900');
+        });
+        
+        // Add selection to clicked option
+        this.classList.add('ring-2', 'ring-white', 'ring-offset-2', 'ring-offset-purple-900');
+        selectedAvatar = this.getAttribute('data-avatar');
+    });
+});
+
+async function updateUserAvatar(avatar) {
+    try {
+        const response = await fetch('/api/update_avatar', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ avatar })
+        });
+        
+        const data = await response.json();
+        if (!data.success) {
+            showNotification('Failed to update avatar', 'error');
+        }
+    } catch (error) {
+        showNotification('Failed to update avatar', 'error');
+    }
 }
 
 async function loadUserPosts() {
@@ -110,7 +200,7 @@ function renderUserPosts(posts) {
             <div class="flex items-center justify-between mb-4">
                 <div class="flex items-center space-x-3">
                     <div class="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
-                        👤
+                        ${currentUser.avatar || '👤'}
                     </div>
                     <div>
                         <p class="text-purple-300 text-sm">${post.timestamp}</p>
@@ -137,7 +227,7 @@ function renderUserPosts(posts) {
 }
 
 function editProfile() {
-    showNotification('Profile editing feature coming soon! ✨', 'info');
+    showNotification('Profile editing coming soon! ✨', 'info');
 }
 
 async function logout() {
@@ -156,20 +246,3 @@ async function logout() {
 loadProfile();
 </script>
 {% endblock %}
-<button onclick="logout()" class="bg-gradient-to-r from-red-500 to-pink-500 text-white px-6 py-2 rounded-full hover:from-red-600 hover:to-pink-600 transition-all ml-4">
-    Logout
-</button>
-
-<script>
-async function logout() {
-    try {
-        await fetch('/api/logout');
-        showNotification('Logged out successfully!', 'success');
-        setTimeout(() => {
-            window.location.href = '/';
-        }, 1000);
-    } catch (error) {
-        showNotification('Logout failed', 'error');
-    }
-}
-</script>
