@@ -388,3 +388,9 @@ if __name__ == '__main__':
     print("🌐 Production Ready with Data Persistence!")
     
     app.run(debug=debug_mode, host='0.0.0.0', port=port)
+
+@app.route('/messages')
+def messages():
+    if 'user_id' not in session:
+        return redirect('/login')
+    return render_template('messages.html')

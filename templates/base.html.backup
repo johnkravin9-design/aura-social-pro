@@ -32,12 +32,11 @@
                 </a>
             </div>
             
-                <div class="hidden md:flex items-center space-x-8">
-                    <a href="/" class="text-white hover:text-purple-300 transition-colors">Home</a>
-                    <a href="/feed" class="text-white hover:text-purple-300 transition-colors">Explore</a>
-                    <a href="/messages" class="text-white hover:text-purple-300 transition-colors">Messages</a>
-                    <a href="/profile" class="text-white hover:text-purple-300 transition-colors">Profile</a>
-                </div>
+            <div class="hidden md:flex items-center space-x-8">
+                <a href="/" class="text-white hover:text-purple-300 transition-colors">Home</a>
+                <a href="/feed" class="text-white hover:text-purple-300 transition-colors">Explore</a>
+                <a href="/profile" class="text-white hover:text-purple-300 transition-colors">Profile</a>
+            </div>
             
             <div class="flex items-center space-x-4" id="navAuth">
                 <!-- Dynamic content will be loaded by JavaScript -->
