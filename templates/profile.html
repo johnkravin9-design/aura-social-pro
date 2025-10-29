@@ -156,3 +156,20 @@ async function logout() {
 loadProfile();
 </script>
 {% endblock %}
+<button onclick="logout()" class="bg-gradient-to-r from-red-500 to-pink-500 text-white px-6 py-2 rounded-full hover:from-red-600 hover:to-pink-600 transition-all ml-4">
+    Logout
+</button>
+
+<script>
+async function logout() {
+    try {
+        await fetch('/api/logout');
+        showNotification('Logged out successfully!', 'success');
+        setTimeout(() => {
+            window.location.href = '/';
+        }, 1000);
+    } catch (error) {
+        showNotification('Logout failed', 'error');
+    }
+}
+</script>

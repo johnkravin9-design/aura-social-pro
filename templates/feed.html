@@ -41,7 +41,7 @@
         <!-- Create Post -->
         <div class="glass rounded-2xl p-6 mb-8">
             <div class="flex items-center space-x-4">
-                <div class="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full" id="currentUserAvatar"></div>
+                <div class="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white" id="currentUserAvatar">👤</div>
                 <input type="text" id="postContent" placeholder="What's your aura today?" 
                        class="flex-1 bg-white/10 text-white placeholder-purple-300 rounded-xl px-4 py-3 border border-white/20 focus:outline-none focus:border-purple-400">
             </div>
@@ -59,11 +59,10 @@
 
         <!-- Posts Container -->
         <div id="postsContainer" class="space-y-6">
-            <!-- Posts will be loaded here dynamically -->
             <div class="glass rounded-2xl p-8 text-center">
                 <div class="text-4xl mb-4">✨</div>
-                <h3 class="text-white font-bold text-xl mb-2">Your Aura Feed is Empty</h3>
-                <p class="text-purple-300">Be the first to share your aura and start the conversation!</p>
+                <h3 class="text-white font-bold text-xl mb-2">Loading your aura feed...</h3>
+                <p class="text-purple-300">Please wait while we load the latest posts</p>
             </div>
         </div>
     </div>
@@ -73,7 +72,31 @@
         <div class="glass rounded-2xl p-6 mb-6">
             <h4 class="text-white font-bold mb-4">Suggested Souls</h4>
             <div class="space-y-4" id="suggestedUsers">
-                <!-- Suggested users will be loaded here -->
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-full"></div>
+                        <div>
+                            <div class="text-white font-medium">Emma Wilson</div>
+                            <div class="text-purple-300 text-sm">Designer</div>
+                        </div>
+                    </div>
+                    <button class="bg-purple-500 text-white px-4 py-1 rounded-full text-sm hover:bg-purple-600 transition-colors">
+                        Follow
+                    </button>
+                </div>
+                
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 bg-gradient-to-r from-red-500 to-pink-500 rounded-full"></div>
+                        <div>
+                            <div class="text-white font-medium">David Kim</div>
+                            <div class="text-purple-300 text-sm">Developer</div>
+                        </div>
+                    </div>
+                    <button class="bg-purple-500 text-white px-4 py-1 rounded-full text-sm hover:bg-purple-600 transition-colors">
+                        Follow
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -82,15 +105,15 @@
             <div class="space-y-4">
                 <div class="flex justify-between">
                     <span class="text-purple-300">Active Users</span>
-                    <span class="text-white font-bold">2.4M</span>
+                    <span class="text-white font-bold" id="activeUsers">2.4M</span>
                 </div>
                 <div class="flex justify-between">
                     <span class="text-purple-300">Posts Today</span>
-                    <span class="text-white font-bold">156K</span>
+                    <span class="text-white font-bold" id="postsToday">156K</span>
                 </div>
                 <div class="flex justify-between">
                     <span class="text-purple-300">Connections Made</span>
-                    <span class="text-white font-bold">89K</span>
+                    <span class="text-white font-bold" id="connectionsMade">89K</span>
                 </div>
             </div>
         </div>
@@ -98,22 +121,24 @@
 </div>
 
 <script>
-const socket = io();
-let currentUser = null;
-
 // Load user data and posts
 async function loadInitialData() {
     try {
+        console.log('Loading initial data...');
+        
+        // Load current user
         const userResponse = await fetch('/api/current_user');
         const userData = await userResponse.json();
         
         if (!userData.error) {
-            currentUser = userData;
             updateUserProfile(userData);
+        } else {
+            console.log('User not logged in');
         }
         
+        // Load posts
         await loadPosts();
-        await loadSuggestedUsers();
+        
     } catch (error) {
         console.error('Error loading data:', error);
         showNotification('Failed to load feed data', 'error');
@@ -123,37 +148,42 @@ async function loadInitialData() {
 function updateUserProfile(user) {
     document.getElementById('userDisplayName').textContent = user.display_name || user.username;
     document.getElementById('userUsername').textContent = `@${user.username}`;
-    document.getElementById('currentUserAvatar').innerHTML = user.avatar || '👤';
+    document.getElementById('currentUserAvatar').textContent = user.avatar || '👤';
 }
 
 async function loadPosts() {
     try {
+        console.log('Loading posts from API...');
         const response = await fetch('/api/posts');
         const posts = await response.json();
+        console.log('Posts received:', posts);
         renderPosts(posts);
     } catch (error) {
         console.error('Error loading posts:', error);
+        renderPosts([]);
     }
 }
 
 function renderPosts(posts) {
     const container = document.getElementById('postsContainer');
+    console.log('Rendering posts:', posts);
     
     if (!posts || posts.length === 0) {
         container.innerHTML = `
             <div class="glass rounded-2xl p-8 text-center">
-                <div class="text-4xl mb-4">✨</div>
-                <h3 class="text-white font-bold text-xl mb-2">Your Aura Feed is Empty</h3>
+                <div class="text-4xl mb-4">🌟</div>
+                <h3 class="text-white font-bold text-xl mb-2">No Posts Yet</h3>
                 <p class="text-purple-300">Be the first to share your aura and start the conversation!</p>
             </div>
         `;
         return;
     }
     
-    container.innerHTML = posts.map(post => `
+    // Create posts HTML
+    const postsHTML = posts.map(post => `
         <article class="glass rounded-2xl p-6 post-card">
             <div class="flex items-center space-x-4 mb-4">
-                <div class="w-12 h-12 bg-gradient-to-r from-${getColorFromUsername(post.username)}-500 to-${getColorFromUsername(post.username)}-600 rounded-full flex items-center justify-center">
+                <div class="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white">
                     ${post.avatar || '👤'}
                 </div>
                 <div>
@@ -163,52 +193,24 @@ function renderPosts(posts) {
             </div>
             <p class="text-white mb-4 text-lg">${post.content}</p>
             <div class="flex items-center justify-between text-purple-300">
-                <button onclick="likePost(${post.id})" class="flex items-center space-x-2 hover:text-pink-400 transition-colors">
+                <button onclick="likePost('${post.id}')" class="flex items-center space-x-2 hover:text-pink-400 transition-colors">
                     <span>❤️</span>
                     <span>${post.likes || 0}</span>
                 </button>
                 <button class="flex items-center space-x-2 hover:text-blue-400 transition-colors">
                     <span>💬</span>
-                    <span>${post.comments_count || 0}</span>
+                    <span>0</span>
                 </button>
                 <button class="flex items-center space-x-2 hover:text-green-400 transition-colors">
                     <span>🔄</span>
-                    <span>${post.shares || 0}</span>
+                    <span>0</span>
                 </button>
                 <button class="hover:text-white transition-colors">📤</button>
             </div>
         </article>
-    `).reverse().join('');
-}
-
-function getColorFromUsername(username) {
-    const colors = ['purple', 'blue', 'green', 'yellow', 'pink', 'indigo'];
-    const index = username.length % colors.length;
-    return colors[index];
-}
-
-async function loadSuggestedUsers() {
-    // This would typically come from your API
-    const suggestedUsers = [
-        { name: "Emma Wilson", role: "Designer", color: "yellow" },
-        { name: "David Kim", role: "Developer", color: "red" }
-    ];
-    
-    const container = document.getElementById('suggestedUsers');
-    container.innerHTML = suggestedUsers.map(user => `
-        <div class="flex items-center justify-between">
-            <div class="flex items-center space-x-3">
-                <div class="w-10 h-10 bg-gradient-to-r from-${user.color}-500 to-${user.color}-600 rounded-full"></div>
-                <div>
-                    <div class="text-white font-medium">${user.name}</div>
-                    <div class="text-purple-300 text-sm">${user.role}</div>
-                </div>
-            </div>
-            <button class="bg-purple-500 text-white px-4 py-1 rounded-full text-sm hover:bg-purple-600 transition-colors">
-                Follow
-            </button>
-        </div>
     `).join('');
+    
+    container.innerHTML = postsHTML;
 }
 
 // Create post
@@ -227,6 +229,7 @@ document.getElementById('createPostBtn').addEventListener('click', async functio
     submitBtn.classList.add('opacity-50');
     
     try {
+        console.log('Creating post:', content);
         const response = await fetch('/api/create_post', {
             method: 'POST',
             headers: {
@@ -236,14 +239,18 @@ document.getElementById('createPostBtn').addEventListener('click', async functio
         });
         
         const data = await response.json();
+        console.log('Create post response:', data);
         
         if (data.success) {
             document.getElementById('postContent').value = '';
             showNotification('Your aura has been shared! ✨', 'success');
+            // Reload posts to show the new one
+            await loadPosts();
         } else {
             showNotification(data.error || 'Failed to share your aura', 'error');
         }
     } catch (error) {
+        console.error('Error creating post:', error);
         showNotification('Connection failed. Please try again.', 'error');
     } finally {
         submitBtn.disabled = false;
@@ -255,6 +262,7 @@ document.getElementById('createPostBtn').addEventListener('click', async functio
 // Like post
 async function likePost(postId) {
     try {
+        console.log('Liking post:', postId);
         const response = await fetch(`/api/like_post/${postId}`, {
             method: 'POST',
             headers: {
@@ -263,24 +271,20 @@ async function likePost(postId) {
         });
         
         const data = await response.json();
-        if (!data.success) {
+        if (data.success) {
+            showNotification('Post liked! ❤️', 'success');
+            // Reload posts to update like count
+            await loadPosts();
+        } else {
             showNotification(data.error, 'error');
         }
     } catch (error) {
+        console.error('Error liking post:', error);
         showNotification('Failed to like post', 'error');
     }
 }
 
-// Socket event listeners
-socket.on('new_post', (post) => {
-    loadPosts(); // Reload posts
-});
-
-socket.on('post_updated', (post) => {
-    loadPosts(); // Reload posts
-});
-
-// Load initial data
-loadInitialData();
+// Load initial data when page opens
+document.addEventListener('DOMContentLoaded', loadInitialData);
 </script>
 {% endblock %}

@@ -243,3 +243,16 @@ if __name__ == '__main__':
     print("🌐 Production Ready!")
     
     app.run(debug=debug_mode, host='0.0.0.0', port=port)
+
+# Add favicon route to stop 404 errors
+@app.route('/favicon.ico')
+def favicon():
+    return '', 204
+
+# Add this route to debug posts
+@app.route('/api/debug_posts')
+def debug_posts():
+    print("DEBUG: Current posts in database:", len(posts_db))
+    for i, post in enumerate(posts_db):
+        print(f"Post {i}: {post.content} by {post.username}")
+    return jsonify([{"id": p.id, "content": p.content, "username": p.username} for p in posts_db])
