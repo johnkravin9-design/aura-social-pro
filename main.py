@@ -1,12 +1,18 @@
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for
-import json
 import os
-from datetime import datetime
 import uuid
+from datetime import datetime
 
 app = Flask(__name__)
-# Use environment variable with fallback for development
-app.secret_key = os.environ.get('SECRET_KEY', 'dev_key_aura_social_2024')
+
+# PRODUCTION SESSION CONFIGURATION FOR RENDER
+app.secret_key = os.environ.get('SECRET_KEY', 'aura_social_pro_render_deploy_2024_secure_key_12345')
+app.config.update(
+    SESSION_COOKIE_SECURE=True,      # Only send cookies over HTTPS
+    SESSION_COOKIE_HTTPONLY=True,    # Prevent JavaScript access to cookies
+    SESSION_COOKIE_SAMESITE='Lax',   # CSRF protection
+    PERMANENT_SESSION_LIFETIME=3600  # 1 hour session lifetime
+)
 
 # In-memory database (replace with real database in production)
 users_db = {}
@@ -37,6 +43,24 @@ class Post:
         self.display_name = ""
         self.avatar = "👤"
 
+# Initialize sample data
+def init_sample_data():
+    if 'demo' not in users_db:
+        sample_user = User('demo', 'demo@aura.social', 'demo')
+        users_db['demo'] = sample_user
+        
+        sample_post = Post(sample_user.id, "Welcome to Aura Social! 🌟 This is a sample post to get things started. Share your aura with the world!")
+        sample_post.username = sample_user.username
+        sample_post.display_name = sample_user.display_name
+        sample_post.avatar = sample_user.avatar
+        posts_db.append(sample_post)
+
+        sample_post2 = Post(sample_user.id, "Just discovered this amazing platform! The design is incredible and the community seems so friendly. Can't wait to connect with everyone! ✨")
+        sample_post2.username = sample_user.username
+        sample_post2.display_name = sample_user.display_name
+        sample_post2.avatar = sample_user.avatar
+        posts_db.append(sample_post2)
+
 # Routes
 @app.route('/')
 def index():
@@ -52,12 +76,15 @@ def register():
 
 @app.route('/feed')
 def feed():
+    print(f"DEBUG: Session data in /feed: {dict(session)}")
     if 'user_id' not in session:
+        print("DEBUG: User not logged in, redirecting to login")
         return redirect('/login')
     return render_template('feed.html')
 
 @app.route('/profile')
 def profile():
+    print(f"DEBUG: Session data in /profile: {dict(session)}")
     if 'user_id' not in session:
         return redirect('/login')
     return render_template('profile.html')
@@ -77,15 +104,21 @@ def api_register():
         if username in users_db:
             return jsonify({'success': False, 'error': 'Username already exists'})
 
+        # Create new user
         user = User(username, email, password)
         users_db[username] = user
 
+        # Auto-login after registration with proper session setup
+        session.permanent = True
         session['user_id'] = user.id
         session['username'] = user.username
-
+        
+        print(f"DEBUG: User registered and logged in: {username}, Session: {dict(session)}")
+        
         return jsonify({'success': True, 'message': 'Registration successful'})
 
     except Exception as e:
+        print(f"DEBUG: Registration error: {e}")
         return jsonify({'success': False, 'error': 'Registration failed'})
 
 @app.route('/api/login', methods=['POST'])
@@ -102,30 +135,41 @@ def api_login():
         if not user or user.password != password:
             return jsonify({'success': False, 'error': 'Invalid credentials'})
 
+        # Set up session properly
+        session.permanent = True
         session['user_id'] = user.id
         session['username'] = user.username
-
+        
+        print(f"DEBUG: User logged in: {username}, Session: {dict(session)}")
+        
         return jsonify({'success': True, 'message': 'Login successful'})
 
     except Exception as e:
+        print(f"DEBUG: Login error: {e}")
         return jsonify({'success': False, 'error': 'Login failed'})
 
 @app.route('/api/logout', methods=['POST'])
 def api_logout():
     session.clear()
+    print("DEBUG: User logged out, session cleared")
     return jsonify({'success': True})
 
 @app.route('/api/current_user')
 def api_current_user():
+    print(f"DEBUG: Checking current user. Session: {dict(session)}")
+    
     if 'username' not in session:
+        print("DEBUG: No username in session - user not logged in")
         return jsonify({'error': 'Not logged in'})
 
     username = session['username']
     user = users_db.get(username)
     
     if not user:
+        print(f"DEBUG: User {username} not found in database")
         return jsonify({'error': 'User not found'})
 
+    print(f"DEBUG: Returning user data for: {username}")
     return jsonify({
         'username': user.username,
         'email': user.email,
@@ -138,6 +182,7 @@ def api_current_user():
 
 @app.route('/api/posts')
 def api_posts():
+    # Add user info to posts
     for post in posts_db:
         user = next((u for u in users_db.values() if u.id == post.user_id), None)
         if user:
@@ -155,6 +200,7 @@ def api_posts():
         'avatar': post.avatar
     } for post in posts_db]
 
+    print(f"DEBUG: Returning {len(posts_data)} posts")
     return jsonify(posts_data)
 
 @app.route('/api/user_posts')
@@ -174,6 +220,8 @@ def api_user_posts():
 
 @app.route('/api/create_post', methods=['POST'])
 def api_create_post():
+    print(f"DEBUG: Create post request. Session: {dict(session)}")
+    
     if 'user_id' not in session:
         return jsonify({'success': False, 'error': 'Not logged in'})
 
@@ -184,8 +232,10 @@ def api_create_post():
         if not content:
             return jsonify({'success': False, 'error': 'Post content cannot be empty'})
 
+        # Create new post
         post = Post(session['user_id'], content)
         
+        # Add user info
         user = users_db.get(session['username'])
         if user:
             post.username = user.username
@@ -193,10 +243,12 @@ def api_create_post():
             post.avatar = user.avatar
 
         posts_db.append(post)
+        print(f"DEBUG: Post created by {session['username']}: {content}")
 
         return jsonify({'success': True, 'message': 'Post created successfully'})
 
     except Exception as e:
+        print(f"DEBUG: Create post error: {e}")
         return jsonify({'success': False, 'error': 'Failed to create post'})
 
 @app.route('/api/like_post/<post_id>', methods=['POST'])
@@ -215,24 +267,25 @@ def api_like_post(post_id):
     except Exception as e:
         return jsonify({'success': False, 'error': 'Failed to like post'})
 
+@app.route('/api/debug_posts')
+def debug_posts():
+    print("DEBUG: Current posts in database:", len(posts_db))
+    for i, post in enumerate(posts_db):
+        print(f"Post {i}: {post.content} by {post.username}")
+    return jsonify([{"id": p.id, "content": p.content, "username": p.username} for p in posts_db])
+
+@app.route('/api/debug_session')
+def debug_session():
+    return jsonify(dict(session))
+
+@app.route('/favicon.ico')
+def favicon():
+    return '', 204
+
 if __name__ == '__main__':
-    # Create sample data
-    if not users_db:
-        sample_user = User('demo', 'demo@aura.social', 'demo')
-        users_db['demo'] = sample_user
-        
-        sample_post = Post(sample_user.id, "Welcome to Aura Social! 🌟 This is a sample post to get things started. Share your aura with the world!")
-        sample_post.username = sample_user.username
-        sample_post.display_name = sample_user.display_name
-        sample_post.avatar = sample_user.avatar
-        posts_db.append(sample_post)
-
-        sample_post2 = Post(sample_user.id, "Just discovered this amazing platform! The design is incredible and the community seems so friendly. Can't wait to connect with everyone! ✨")
-        sample_post2.username = sample_user.username
-        sample_post2.display_name = sample_user.display_name
-        sample_post2.avatar = sample_user.avatar
-        posts_db.append(sample_post2)
-
+    # Initialize sample data
+    init_sample_data()
+    
     # Production settings
     debug_mode = os.environ.get('DEBUG', 'False').lower() == 'true'
     port = int(os.environ.get('PORT', 10000))
@@ -240,19 +293,7 @@ if __name__ == '__main__':
     print(f"🚀 Aura Social Pro starting on port {port}")
     print("✨ Features: User Auth, Posts, Likes, Modern UI")
     print("🔑 Demo account: username 'demo', password 'demo'")
+    print("🔧 Session debugging enabled")
     print("🌐 Production Ready!")
     
     app.run(debug=debug_mode, host='0.0.0.0', port=port)
-
-# Add favicon route to stop 404 errors
-@app.route('/favicon.ico')
-def favicon():
-    return '', 204
-
-# Add this route to debug posts
-@app.route('/api/debug_posts')
-def debug_posts():
-    print("DEBUG: Current posts in database:", len(posts_db))
-    for i, post in enumerate(posts_db):
-        print(f"Post {i}: {post.content} by {post.username}")
-    return jsonify([{"id": p.id, "content": p.content, "username": p.username} for p in posts_db])
