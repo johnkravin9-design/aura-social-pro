@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+
+{% block title %}Profile - Aura Social{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <!-- Profile Header -->
+    <div class="glass rounded-2xl p-8 mb-6">
+        <div class="flex items-center space-x-6">
+            <div class="w-24 h-24 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-4xl aura-glow">
+                👤
+            </div>
+            <div class="flex-1">
+                <h1 class="text-3xl font-bold text-white" id="profileName">Loading...</h1>
+                <p class="text-purple-300 text-lg" id="profileUsername">@username</p>
+                <p class="text-white mt-2" id="profileBio">This is where your bio will appear. Share your aura with the world!</p>
+                
+                <div class="flex space-x-6 mt-4">
+                    <div class="text-center">
+                        <div class="text-white font-bold text-xl" id="profilePosts">0</div>
+                        <div class="text-purple-300">Posts</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-white font-bold text-xl" id="profileFollowing">0</div>
+                        <div class="text-purple-300">Following</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-white font-bold text-xl" id="profileFollowers">0</div>
+                        <div class="text-purple-300">Followers</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="flex space-x-4 mt-6">
+            <button onclick="editProfile()" class="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-2 rounded-full hover:from-purple-600 hover:to-pink-600 transition-all">
+                Edit Profile
+            </button>
+            <button onclick="logout()" class="glass text-white px-6 py-2 rounded-full hover:bg-white/20 transition-all">
+                Logout
+            </button>
+        </div>
+    </div>
+
+    <!-- User Posts -->
+    <div>
+        <h2 class="text-2xl font-bold text-white mb-6">Recent Auras</h2>
+        <div id="userPostsContainer" class="space-y-4">
+            <!-- User posts will be loaded here -->
+            <div class="glass rounded-2xl p-8 text-center">
+                <div class="text-4xl mb-4">🌟</div>
+                <h3 class="text-white font-bold text-xl mb-2">No Auras Yet</h3>
+                <p class="text-purple-300">Share your first aura to let the world see your glow!</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+async function loadProfile() {
+    try {
+        const response = await fetch('/api/current_user');
+        const user = await response.json();
+        
+        if (user.error) {
+            window.location.href = '/login';
+            return;
+        }
+        
+        updateProfile(user);
+        loadUserPosts();
+    } catch (error) {
+        showNotification('Failed to load profile', 'error');
+    }
+}
+
+function updateProfile(user) {
+    document.getElementById('profileName').textContent = user.display_name || user.username;
+    document.getElementById('profileUsername').textContent = `@${user.username}`;
+    document.getElementById('profileBio').textContent = user.bio || 'This is where your bio will appear. Share your aura with the world!';
+    document.getElementById('profileEmail').textContent = user.email || '';
+}
+
+async function loadUserPosts() {
+    try {
+        const response = await fetch('/api/user_posts');
+        const posts = await response.json();
+        renderUserPosts(posts);
+    } catch (error) {
+        console.error('Error loading user posts:', error);
+    }
+}
+
+function renderUserPosts(posts) {
+    const container = document.getElementById('userPostsContainer');
+    
+    if (!posts || posts.length === 0) {
+        container.innerHTML = `
+            <div class="glass rounded-2xl p-8 text-center">
+                <div class="text-4xl mb-4">🌟</div>
+                <h3 class="text-white font-bold text-xl mb-2">No Auras Yet</h3>
+                <p class="text-purple-300">Share your first aura to let the world see your glow!</p>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = posts.map(post => `
+        <article class="glass rounded-2xl p-6 post-card">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
+                        👤
+                    </div>
+                    <div>
+                        <p class="text-purple-300 text-sm">${post.timestamp}</p>
+                    </div>
+                </div>
+                <button class="text-purple-300 hover:text-white transition-colors">
+                    ⋮
+                </button>
+            </div>
+            <p class="text-white text-lg">${post.content}</p>
+            <div class="flex items-center justify-between mt-4 text-purple-300">
+                <button class="flex items-center space-x-2 hover:text-pink-400 transition-colors">
+                    <span>❤️</span>
+                    <span>${post.likes || 0}</span>
+                </button>
+                <button class="flex items-center space-x-2 hover:text-blue-400 transition-colors">
+                    <span>💬</span>
+                    <span>${post.comments_count || 0}</span>
+                </button>
+                <button class="hover:text-white transition-colors">📤</button>
+            </div>
+        </article>
+    `).reverse().join('');
+}
+
+function editProfile() {
+    showNotification('Profile editing feature coming soon! ✨', 'info');
+}
+
+async function logout() {
+    try {
+        await fetch('/api/logout');
+        showNotification('You have been logged out. Your aura will be missed! 🌟', 'success');
+        setTimeout(() => {
+            window.location.href = '/';
+        }, 1500);
+    } catch (error) {
+        showNotification('Logout failed', 'error');
+    }
+}
+
+// Load profile when page opens
+loadProfile();
+</script>
+{% endblock %}

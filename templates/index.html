@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}Aura Social - The Future of Social Media{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+    <!-- Hero Section -->
+    <div class="text-center py-20">
+        <h1 class="text-6xl font-bold text-white mb-6">
+            Welcome to <span class="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">Aura Social</span>
+        </h1>
+        <p class="text-xl text-purple-300 mb-8 max-w-2xl mx-auto">
+            The next-generation social platform where connections glow and communities thrive. 
+            Share your aura with the world.
+        </p>
+        <div class="space-x-4">
+            <a href="/register" class="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-8 py-4 rounded-full hover:from-purple-600 hover:to-pink-600 transition-all pulse-gentle text-lg font-semibold">
+                Start Your Journey
+            </a>
+            <a href="/feed" class="glass text-white px-8 py-4 rounded-full hover:bg-white/20 transition-all text-lg font-semibold">
+                Explore Feed
+            </a>
+        </div>
+    </div>
+
+    <!-- Features Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8 py-16">
+        <div class="glass rounded-2xl p-8 text-center">
+            <div class="text-4xl mb-4">✨</div>
+            <h3 class="text-white font-bold text-xl mb-4">Glowing Connections</h3>
+            <p class="text-purple-300">Build meaningful relationships with like-minded souls in our vibrant community.</p>
+        </div>
+        <div class="glass rounded-2xl p-8 text-center">
+            <div class="text-4xl mb-4">🚀</div>
+            <h3 class="text-white font-bold text-xl mb-4">Instant Updates</h3>
+            <p class="text-purple-300">Real-time interactions and instant notifications keep you connected.</p>
+        </div>
+        <div class="glass rounded-2xl p-8 text-center">
+            <div class="text-4xl mb-4">🎨</div>
+            <h3 class="text-white font-bold text-xl mb-4">Creative Expression</h3>
+            <p class="text-purple-300">Share your unique aura through posts, stories, and multimedia content.</p>
+        </div>
+    </div>
+
+    <!-- Stats Section -->
+    <div class="glass rounded-2xl p-8 text-center my-16">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-8">
+            <div>
+                <div class="text-3xl font-bold text-white">2.4M</div>
+                <div class="text-purple-300">Active Users</div>
+            </div>
+            <div>
+                <div class="text-3xl font-bold text-white">156K</div>
+                <div class="text-purple-300">Posts Today</div>
+            </div>
+            <div>
+                <div class="text-3xl font-bold text-white">89K</div>
+                <div class="text-purple-300">Connections</div>
+            </div>
+            <div>
+                <div class="text-3xl font-bold text-white">24/7</div>
+                <div class="text-purple-300">Active Community</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

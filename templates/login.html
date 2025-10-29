@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block title %}Login - Aura Social{% endblock %}
+
+{% block content %}
+<div class="max-w-md mx-auto">
+    <div class="glass rounded-2xl p-8">
+        <div class="text-center mb-8">
+            <div class="w-20 h-20 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4 aura-glow">
+                <span class="text-white font-bold text-2xl">🔐</span>
+            </div>
+            <h2 class="text-3xl font-bold text-white">Welcome Back</h2>
+            <p class="text-purple-300 mt-2">Sign in to your Aura Social account</p>
+        </div>
+
+        <form id="loginForm">
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-purple-300 text-sm font-semibold mb-2">Username</label>
+                    <input type="text" name="username" placeholder="Enter your username" 
+                           class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-purple-300 focus:outline-none focus:border-purple-400 transition-colors">
+                </div>
+                
+                <div>
+                    <label class="block text-purple-300 text-sm font-semibold mb-2">Password</label>
+                    <input type="password" name="password" placeholder="Enter your password" 
+                           class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-purple-300 focus:outline-none focus:border-purple-400 transition-colors">
+                </div>
+            </div>
+
+            <button type="submit" 
+                    class="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold py-3 rounded-xl hover:from-purple-600 hover:to-pink-600 transition-all mt-6">
+                Sign In to Aura
+            </button>
+        </form>
+
+        <div class="text-center mt-6">
+            <p class="text-purple-300">
+                New to Aura? 
+                <a href="/register" class="text-white font-semibold hover:text-purple-300 transition-colors">Create an account</a>
+            </p>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('loginForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.textContent;
+    
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Signing in...';
+    submitBtn.classList.add('opacity-50');
+    
+    try {
+        const formData = {
+            username: this.username.value.trim(),
+            password: this.password.value
+        };
+        
+        const response = await fetch('/api/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(formData)
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showNotification('Welcome back! Your aura is glowing! ✨', 'success');
+            setTimeout(() => {
+                window.location.href = '/feed';
+            }, 1000);
+        } else {
+            showNotification(data.error || 'Login failed', 'error');
+        }
+    } catch (error) {
+        showNotification('Connection failed. Please try again.', 'error');
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
+        submitBtn.classList.remove('opacity-50');
+    }
+});
+</script>
+{% endblock %}
