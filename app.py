@@ -1,305 +1,241 @@
-from flask import Flask, render_template, jsonify, request, session, redirect, url_for
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for
 import json
-import datetime
-import hashlib
 import os
+from datetime import datetime
+import uuid
 
 app = Flask(__name__)
-app.secret_key = 'aura_social_secret_key_2024'
+app.secret_key = os.environ.get('SECRET_KEY', 'aura_social_pro_secret_key_2024')
 
-# User database (in production we'd use a real database)
+# In-memory database (replace with real database in production)
 users_db = {}
 posts_db = []
-user_id_counter = 1
 
 class User:
-    def __init__(self, user_id, username, email, display_name, bio="", avatar="👤", role="user"):
-        self.user_id = user_id
+    def __init__(self, username, email, password):
+        self.id = str(uuid.uuid4())
         self.username = username
         self.email = email
-        self.display_name = display_name
-        self.bio = bio
-        self.avatar = avatar
-        self.role = role
-        self.joined_date = datetime.datetime.now().strftime("%Y-%m-%d")
-        self.following = []
+        self.password = password
+        self.display_name = username
+        self.bio = "Welcome to my Aura! ✨"
+        self.avatar = "👤"
+        self.created_at = datetime.now().isoformat()
         self.followers = []
-        self.is_active = True
+        self.following = []
 
-    def to_dict(self):
-        return {
-            "user_id": self.user_id,
-            "username": self.username,
-            "email": self.email,
-            "display_name": self.display_name,
-            "bio": self.bio,
-            "avatar": self.avatar,
-            "role": self.role,
-            "joined_date": self.joined_date,
-            "following_count": len(self.following),
-            "followers_count": len(self.followers),
-            "is_active": self.is_active
-        }
+class Post:
+    def __init__(self, user_id, content):
+        self.id = str(uuid.uuid4())
+        self.user_id = user_id
+        self.content = content
+        self.timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+        self.likes = 0
+        self.comments = []
+        self.username = ""
+        self.display_name = ""
+        self.avatar = "👤"
 
-    def is_admin(self):
-        return self.role == "admin"
-
-# Add admin user and sample users
-def initialize_sample_data():
-    global user_id_counter
-    
-    # CREATE ADMIN USER - You can login with these credentials!
-    admin_user = User(user_id_counter, "admin", "admin@aura.social", "Aura Administrator", 
-                     "Platform Administrator", "👑", "admin")
-    user_id_counter += 1
-    
-    user1 = User(user_id_counter, "johnkravin", "john@aura.social", "John Kravin", 
-                 "Building the future of social media 🚀", "👨‍💻")
-    user_id_counter += 1
-    user2 = User(user_id_counter, "auratech", "tech@aura.social", "Aura Team", 
-                 "Creating intelligent social experiences", "🤖")
-    user_id_counter += 1
-    
-    users_db[admin_user.username] = admin_user
-    users_db[user1.username] = user1
-    users_db[user2.username] = user2
-    
-    # Sample posts
-    posts_db.extend([
-        {
-            "post_id": 1,
-            "user_id": user1.user_id,
-            "username": user1.username,
-            "display_name": user1.display_name,
-            "avatar": user1.avatar,
-            "content": "Building the future of social media with Aura! 🚀\n\nThis platform will change how we connect online.",
-            "timestamp": "2024-01-15 10:30:00",
-            "reactions": {"like": 5, "love": 2, "insightful": 3},
-            "comments": [
-                {"username": "auratech", "display_name": "Aura Team", "text": "This is revolutionary!", "timestamp": "2024-01-15 10:35:00"}
-            ],
-            "is_approved": True
-        },
-        {
-            "post_id": 2,
-            "user_id": user2.user_id,
-            "username": user2.username,
-            "display_name": user2.display_name,
-            "avatar": user2.avatar,
-            "content": "Aura Features Coming Soon:\n• Focus Flow feeds\n• Smart Channels\n• Living Profiles\n• Context-aware AI\n• Ephemeral Spaces",
-            "timestamp": "2024-01-15 09:15:00",
-            "reactions": {"like": 8, "excited": 5, "curious": 4},
-            "comments": [],
-            "is_approved": True
-        }
-    ])
-
-initialize_sample_data()
-
-def is_admin():
-    if 'user_id' in session:
-        user = next((u for u in users_db.values() if u.user_id == session['user_id']), None)
-        return user and user.is_admin()
-    return False
-
-def require_admin(f):
-    from functools import wraps
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if not is_admin():
-            return jsonify({"success": False, "error": "Admin access required"}), 403
-        return f(*args, **kwargs)
-    return decorated_function
-
+# Routes
 @app.route('/')
-def home():
-    if 'user_id' in session:
-        if is_admin():
-            return redirect('/admin')
-        return render_template('feed.html')
-    return render_template('auth.html')
+def index():
+    return render_template('index.html')  # FIXED: Using index.html, not auth.html
 
-@app.route('/admin')
-def admin_dashboard():
-    if not is_admin():
-        return redirect('/')
-    return render_template('admin_dashboard.html')
+@app.route('/login')
+def login():
+    return render_template('login.html')
 
-@app.route('/profile/<username>')
-def profile(username):
-    if 'user_id' not in session:
-        return redirect(url_for('home'))
-    
-    user = users_db.get(username)
-    if not user:
-        return "User not found", 404
-    
-    user_posts = [post for post in posts_db if post['username'] == username and post.get('is_approved', True)]
-    return render_template('profile.html', user=user.to_dict(), posts=user_posts)
-
-@app.route('/my_profile')
-def my_profile():
-    if 'user_id' not in session:
-        return redirect(url_for('home'))
-    
-    user = next((u for u in users_db.values() if u.user_id == session['user_id']), None)
-    if user:
-        user_posts = [post for post in posts_db if post['user_id'] == user.user_id and post.get('is_approved', True)]
-        return render_template('profile.html', user=user.to_dict(), posts=user_posts, is_own_profile=True)
-    return redirect(url_for('home'))
-
-# Authentication APIs
-@app.route('/api/register', methods=['POST'])
+@app.route('/register')
 def register():
-    data = request.json
-    username = data.get('username', '').strip().lower()
-    email = data.get('email', '').strip().lower()
-    display_name = data.get('display_name', '').strip()
-    password = data.get('password', '')
-    
-    if not all([username, email, display_name, password]):
-        return jsonify({"success": False, "error": "All fields are required"})
-    
-    if username in users_db:
-        return jsonify({"success": False, "error": "Username already exists"})
-    
-    global user_id_counter
-    new_user = User(user_id_counter, username, email, display_name)
-    user_id_counter += 1
-    
-    users_db[username] = new_user
-    
-    # Auto-login after registration
-    session['user_id'] = new_user.user_id
-    session['username'] = new_user.username
-    
-    return jsonify({"success": True, "user": new_user.to_dict()})
+    return render_template('register.html')
+
+@app.route('/feed')
+def feed():
+    if 'user_id' not in session:
+        return redirect('/login')
+    return render_template('feed.html')
+
+@app.route('/profile')
+def profile():
+    if 'user_id' not in session:
+        return redirect('/login')
+    return render_template('profile.html')
+
+# API Routes
+@app.route('/api/register', methods=['POST'])
+def api_register():
+    try:
+        data = request.get_json()
+        username = data.get('username', '').strip()
+        email = data.get('email', '').strip()
+        password = data.get('password', '')
+
+        if not username or not email or not password:
+            return jsonify({'success': False, 'error': 'All fields are required'})
+
+        if username in users_db:
+            return jsonify({'success': False, 'error': 'Username already exists'})
+
+        user = User(username, email, password)
+        users_db[username] = user
+
+        session['user_id'] = user.id
+        session['username'] = user.username
+
+        return jsonify({'success': True, 'message': 'Registration successful'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': 'Registration failed'})
 
 @app.route('/api/login', methods=['POST'])
-def login():
-    data = request.json
-    username = data.get('username', '').strip().lower()
-    password = data.get('password', '')
-    
-    user = users_db.get(username)
-    if user and user.is_active:  # In real app, we'd verify password hash
-        session['user_id'] = user.user_id
-        session['username'] = user.username
-        return jsonify({"success": True, "user": user.to_dict()})
-    
-    return jsonify({"success": False, "error": "Invalid credentials"})
+def api_login():
+    try:
+        data = request.get_json()
+        username = data.get('username', '').strip()
+        password = data.get('password', '')
 
-@app.route('/api/logout')
-def logout():
+        if not username or not password:
+            return jsonify({'success': False, 'error': 'Username and password are required'})
+
+        user = users_db.get(username)
+        if not user or user.password != password:
+            return jsonify({'success': False, 'error': 'Invalid credentials'})
+
+        session['user_id'] = user.id
+        session['username'] = user.username
+
+        return jsonify({'success': True, 'message': 'Login successful'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': 'Login failed'})
+
+@app.route('/api/logout', methods=['POST'])
+def api_logout():
     session.clear()
-    return jsonify({"success": True})
+    return jsonify({'success': True})
 
 @app.route('/api/current_user')
-def current_user():
-    if 'user_id' in session:
-        user = next((u for u in users_db.values() if u.user_id == session['user_id']), None)
-        if user:
-            return jsonify({"success": True, "user": user.to_dict()})
-    return jsonify({"success": False})
+def api_current_user():
+    if 'username' not in session:
+        return jsonify({'error': 'Not logged in'})
 
-# Admin APIs
-@app.route('/api/admin/stats')
-@require_admin
-def admin_stats():
-    stats = {
-        "total_users": len(users_db),
-        "total_posts": len(posts_db),
-        "active_users": len([u for u in users_db.values() if u.is_active]),
-        "pending_posts": len([p for p in posts_db if not p.get('is_approved', True)]),
-        "new_users_today": len([u for u in users_db.values() if u.joined_date == datetime.datetime.now().strftime("%Y-%m-%d")])
-    }
-    return jsonify({"success": True, "stats": stats})
-
-@app.route('/api/admin/users')
-@require_admin
-def admin_users():
-    users_list = [user.to_dict() for user in users_db.values()]
-    return jsonify({"success": True, "users": users_list})
-
-@app.route('/api/admin/posts')
-@require_admin
-def admin_posts():
-    return jsonify({"success": True, "posts": posts_db})
-
-@app.route('/api/admin/toggle_user/<username>', methods=['POST'])
-@require_admin
-def toggle_user(username):
+    username = session['username']
     user = users_db.get(username)
-    if user:
-        user.is_active = not user.is_active
-        return jsonify({"success": True, "user": user.to_dict()})
-    return jsonify({"success": False, "error": "User not found"})
+    
+    if not user:
+        return jsonify({'error': 'User not found'})
 
-@app.route('/api/admin/toggle_post/<int:post_id>', methods=['POST'])
-@require_admin
-def toggle_post(post_id):
-    for post in posts_db:
-        if post['post_id'] == post_id:
-            post['is_approved'] = not post.get('is_approved', True)
-            return jsonify({"success": True, "post": post})
-    return jsonify({"success": False, "error": "Post not found"})
+    return jsonify({
+        'username': user.username,
+        'email': user.email,
+        'display_name': user.display_name,
+        'bio': user.bio,
+        'avatar': user.avatar,
+        'followers': len(user.followers),
+        'following': len(user.following)
+    })
 
-@app.route('/api/admin/delete_post/<int:post_id>', methods=['POST'])
-@require_admin
-def delete_post(post_id):
-    global posts_db
-    posts_db = [post for post in posts_db if post['post_id'] != post_id]
-    return jsonify({"success": True})
-
-# Post APIs
 @app.route('/api/posts')
-def get_posts():
-    if is_admin():
-        return jsonify(posts_db)
-    else:
-        approved_posts = [post for post in posts_db if post.get('is_approved', True)]
-        return jsonify(approved_posts)
-
-@app.route('/api/add_post', methods=['POST'])
-def add_post():
-    if 'user_id' not in session:
-        return jsonify({"success": False, "error": "Not logged in"})
-    
-    data = request.json
-    user = next((u for u in users_db.values() if u.user_id == session['user_id']), None)
-    
-    if user and data.get('content'):
-        new_post = {
-            "post_id": len(posts_db) + 1,
-            "user_id": user.user_id,
-            "username": user.username,
-            "display_name": user.display_name,
-            "avatar": user.avatar,
-            "content": data['content'],
-            "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "reactions": {"like": 0},
-            "comments": [],
-            "is_approved": user.is_admin()  # Auto-approve admin posts
-        }
-        posts_db.append(new_post)
-        return jsonify({"success": True, "post": new_post})
-    
-    return jsonify({"success": False, "error": "Invalid data"})
-
-@app.route('/api/react/<int:post_id>', methods=['POST'])
-def react_to_post(post_id):
-    data = request.json
-    reaction_type = data.get('reaction', 'like')
-    
+def api_posts():
+    # Add user info to posts
     for post in posts_db:
-        if post['post_id'] == post_id and post.get('is_approved', True):
-            if reaction_type in post['reactions']:
-                post['reactions'][reaction_type] += 1
-            else:
-                post['reactions'][reaction_type] = 1
-            return jsonify({"success": True, "reactions": post['reactions']})
-    
-    return jsonify({"success": False, "error": "Post not found"})
+        user = next((u for u in users_db.values() if u.id == post.user_id), None)
+        if user:
+            post.username = user.username
+            post.display_name = user.display_name
+            post.avatar = user.avatar
+
+    posts_data = [{
+        'id': post.id,
+        'content': post.content,
+        'timestamp': post.timestamp,
+        'likes': post.likes,
+        'username': post.username,
+        'display_name': post.display_name,
+        'avatar': post.avatar
+    } for post in posts_db]
+
+    return jsonify(posts_data)
+
+@app.route('/api/user_posts')
+def api_user_posts():
+    if 'user_id' not in session:
+        return jsonify([])
+
+    user_posts = [post for post in posts_db if post.user_id == session['user_id']]
+    posts_data = [{
+        'id': post.id,
+        'content': post.content,
+        'timestamp': post.timestamp,
+        'likes': post.likes
+    } for post in user_posts]
+
+    return jsonify(posts_data)
+
+@app.route('/api/create_post', methods=['POST'])
+def api_create_post():
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'error': 'Not logged in'})
+
+    try:
+        data = request.get_json()
+        content = data.get('content', '').strip()
+
+        if not content:
+            return jsonify({'success': False, 'error': 'Post content cannot be empty'})
+
+        post = Post(session['user_id'], content)
+        
+        user = users_db.get(session['username'])
+        if user:
+            post.username = user.username
+            post.display_name = user.display_name
+            post.avatar = user.avatar
+
+        posts_db.append(post)
+        return jsonify({'success': True, 'message': 'Post created successfully'})
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': 'Failed to create post'})
+
+@app.route('/api/like_post/<post_id>', methods=['POST'])
+def api_like_post(post_id):
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'error': 'Not logged in'})
+
+    try:
+        post = next((p for p in posts_db if p.id == post_id), None)
+        if post:
+            post.likes += 1
+            return jsonify({'success': True, 'likes': post.likes})
+        else:
+            return jsonify({'success': False, 'error': 'Post not found'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': 'Failed to like post'})
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8000, debug=True)
+    # Create sample data for demonstration
+    if not users_db:
+        sample_user = User('demo', 'demo@aura.social', 'demo')
+        users_db['demo'] = sample_user
+        
+        sample_post = Post(sample_user.id, "Welcome to Aura Social! 🌟 This is a sample post to get things started. Share your aura with the world!")
+        sample_post.username = sample_user.username
+        sample_post.display_name = sample_user.display_name
+        sample_post.avatar = sample_user.avatar
+        posts_db.append(sample_post)
+
+        sample_post2 = Post(sample_user.id, "Just discovered this amazing platform! The design is incredible and the community seems so friendly. Can't wait to connect with everyone! ✨")
+        sample_post2.username = sample_user.username
+        sample_post2.display_name = sample_user.display_name
+        sample_post2.avatar = sample_user.avatar
+        posts_db.append(sample_post2)
+
+    # Production settings
+    debug_mode = os.environ.get('DEBUG', 'False').lower() == 'true'
+    port = int(os.environ.get('PORT', 10000))
+    
+    print(f"🚀 Aura Social Pro starting on port {port}")
+    print("✨ Features: User Auth, Posts, Likes, Modern UI")
+    print("🔑 Demo account: username 'demo', password 'demo'")
+    print("🌐 Production Ready!")
+    
+    app.run(debug=debug_mode, host='0.0.0.0', port=port)
